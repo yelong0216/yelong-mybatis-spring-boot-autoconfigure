@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+org.yelong.mybatis.spring.boot.autoconfigure.YelongMybatisSpringAutoConfiguration,\
+org.yelong.mybatis.spring.boot.autoconfigure.YelongDefaultBeanAutoConfiguration
