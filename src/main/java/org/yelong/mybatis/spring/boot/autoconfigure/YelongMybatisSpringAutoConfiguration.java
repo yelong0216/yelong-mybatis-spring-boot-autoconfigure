@@ -17,9 +17,10 @@ import org.yelong.core.jdbc.dialect.Dialect;
 import org.yelong.core.jdbc.sql.condition.support.ConditionResolver;
 import org.yelong.core.model.ModelConfiguration;
 import org.yelong.core.model.ModelConfigurationBuilder;
-import org.yelong.core.model.ModelProperties;
+import org.yelong.core.model.property.ModelProperty;
 import org.yelong.core.model.resolve.ModelAndTableManager;
 import org.yelong.core.model.service.ModelService;
+import org.yelong.core.model.service.SqlModelService;
 import org.yelong.core.model.sql.ModelSqlFragmentFactory;
 import org.yelong.core.model.sql.SqlModelResolver;
 import org.yelong.mybatis.spring.MyBatisBaseDataBaseOperation;
@@ -37,8 +38,8 @@ public class YelongMybatisSpringAutoConfiguration {
 
 	private Dialect dialect;
 
-	private ModelProperties modelProperties;
-
+	private ModelProperty modelProperty;
+	
 	private ModelAndTableManager modelAndTableManager;
 
 	private ModelSqlFragmentFactory modelSqlFragmentFactory;
@@ -48,11 +49,13 @@ public class YelongMybatisSpringAutoConfiguration {
 	private SqlModelResolver sqlModelResolver;
 
 	public YelongMybatisSpringAutoConfiguration(ObjectProvider<Dialect> dialectProvider,
-			ObjectProvider<ModelProperties> modelPropertiesProvider,ObjectProvider<ModelAndTableManager> modelAndTableManagerProvider,
-			ObjectProvider<ModelSqlFragmentFactory> modelSqlFragmentFactoryProvider,ObjectProvider<ConditionResolver> conditionResolverProvider,
-			ObjectProvider<SqlModelResolver> sqlModelResolverProvider) {
+			ObjectProvider<ModelAndTableManager> modelAndTableManagerProvider,
+			ObjectProvider<ModelSqlFragmentFactory> modelSqlFragmentFactoryProvider,
+			ObjectProvider<ConditionResolver> conditionResolverProvider,
+			ObjectProvider<SqlModelResolver> sqlModelResolverProvider,
+			ObjectProvider<ModelProperty> modelPropertyProvider) {
 		this.dialect = dialectProvider.getIfAvailable();
-		this.modelProperties = modelPropertiesProvider.getIfAvailable();
+		this.modelProperty = modelPropertyProvider.getIfAvailable();
 		this.modelAndTableManager = modelAndTableManagerProvider.getIfAvailable();
 		this.modelSqlFragmentFactory = modelSqlFragmentFactoryProvider.getIfAvailable();
 		this.conditionResolver = conditionResolverProvider.getIfAvailable();
@@ -60,28 +63,22 @@ public class YelongMybatisSpringAutoConfiguration {
 	}
 
 	@Bean
-	@ConditionalOnMissingBean
-	public MyBatisBaseDataBaseOperation mybatisBaseDataBaseOperation(SqlSession sqlSession) {
-		return new MyBatisBaseDataBaseOperation(sqlSession);
-	}
-
-	@Bean
-	@ConditionalOnMissingBean
+	@ConditionalOnMissingBean(ModelConfiguration.class)
 	public ModelConfiguration modelConfiguration() {
 		Assert.notNull(dialect,"未发现或识别失败的数据库方言");
 		ModelConfigurationBuilder modelConfigurationBuilder = new ModelConfigurationBuilder();
 		modelConfigurationBuilder.setDialect(dialect);
 		modelConfigurationBuilder.setConditionResolver(conditionResolver);
 		modelConfigurationBuilder.setModelAndTableManager(modelAndTableManager);
-		modelConfigurationBuilder.setModelProperties(modelProperties);
 		modelConfigurationBuilder.setModelSqlFragmentFactory(modelSqlFragmentFactory);
 		modelConfigurationBuilder.setSqlModelResolver(sqlModelResolver);
+		modelConfigurationBuilder.setModelProperty(modelProperty);
 		return modelConfigurationBuilder.build();
 	}
 	
 	@Bean
-	@ConditionalOnMissingBean
-	public ModelService modelService(ModelConfiguration modelConfiguration,MyBatisBaseDataBaseOperation myBatisBaseDataBaseOperation) {
+	@ConditionalOnMissingBean(SqlModelService.class)
+	public SqlModelService modelService(ModelConfiguration modelConfiguration,MyBatisBaseDataBaseOperation myBatisBaseDataBaseOperation) {
 		return new MyBatisModelService(modelConfiguration,myBatisBaseDataBaseOperation);
 	}
 	

@@ -5,6 +5,7 @@ package org.yelong.mybatis.spring.boot.autoconfigure;
 
 import java.util.List;
 
+import org.apache.ibatis.session.SqlSession;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +15,8 @@ import org.yelong.core.jdbc.dialect.Dialect;
 import org.yelong.core.jdbc.dialect.Dialects;
 import org.yelong.core.jdbc.sql.condition.support.ConditionResolver;
 import org.yelong.core.jdbc.sql.condition.support.DefaultConditionResolver;
-import org.yelong.core.model.ModelProperties;
+import org.yelong.core.model.property.DefaultModelProperty;
+import org.yelong.core.model.property.ModelProperty;
 import org.yelong.core.model.resolve.AnnotationModelResolver;
 import org.yelong.core.model.resolve.ModelAndTableManager;
 import org.yelong.core.model.resolve.ModelResolver;
@@ -22,6 +24,7 @@ import org.yelong.core.model.sql.DefaultModelSqlFragmentFactory;
 import org.yelong.core.model.sql.DefaultSqlModelResolver;
 import org.yelong.core.model.sql.ModelSqlFragmentFactory;
 import org.yelong.core.model.sql.SqlModelResolver;
+import org.yelong.mybatis.spring.MyBatisBaseDataBaseOperation;
 
 /**
  * @author PengFei
@@ -44,22 +47,13 @@ public class YelongDefaultBeanAutoConfiguration {
 	}
 	
 	/**
-	 * @return model 属性
-	 */
-	@Bean
-	@ConditionalOnMissingBean
-	public ModelProperties modelProperties() {
-		return new ModelProperties();
-	}
-	
-	/**
 	 * @param modelProperties model 属性
 	 * @return 模型解析器
 	 */
 	@Bean
 	@ConditionalOnMissingBean
-	public AnnotationModelResolver annotationModelResolver(ModelProperties modelProperties) {
-		return new AnnotationModelResolver(modelProperties);
+	public AnnotationModelResolver annotationModelResolver() {
+		return new AnnotationModelResolver();
 	}
 	
 	/**
@@ -99,8 +93,29 @@ public class YelongDefaultBeanAutoConfiguration {
 	 */
 	@Bean
 	@ConditionalOnMissingBean
-	public SqlModelResolver sqlModelResolver(ModelAndTableManager modelAndTableManager,ConditionResolver conditionResolver) {
-		return new DefaultSqlModelResolver(modelAndTableManager, conditionResolver);
+	public SqlModelResolver sqlModelResolver(ModelAndTableManager modelAndTableManager,ConditionResolver conditionResolver,ModelProperty modelProperty) {
+		DefaultSqlModelResolver sqlModelResolver = new DefaultSqlModelResolver(modelAndTableManager, conditionResolver);
+		sqlModelResolver.setModelProperty(modelProperty);
+		return sqlModelResolver;
+	}
+	
+	/**
+	 * @param sqlSession sql  session
+	 * @return 数据库操作
+	 */
+	@Bean
+	@ConditionalOnMissingBean(MyBatisBaseDataBaseOperation.class)
+	public MyBatisBaseDataBaseOperation mybatisBaseDataBaseOperation(SqlSession sqlSession) {
+		return new MyBatisBaseDataBaseOperation(sqlSession);
+	}
+	
+	/**
+	 * @return model 属性管理
+	 */
+	@Bean
+	@ConditionalOnMissingBean(ModelProperty.class)
+	public ModelProperty modelProperty() {
+		return DefaultModelProperty.INSTANCE;
 	}
 	
 }
