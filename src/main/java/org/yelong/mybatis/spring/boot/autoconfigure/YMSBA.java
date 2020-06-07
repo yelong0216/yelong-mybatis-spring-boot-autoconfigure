@@ -11,6 +11,6 @@ public final class YMSBA {
 
 	private YMSBA() {}
 	
-	public static String VERSION = "1.0.0";
+	public static String VERSION = "1.2.0";
 	
 }

@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.transaction.annotation.Transactional;
 import org.yelong.commons.lang.Strings;
 import org.yelong.core.jdbc.dialect.Dialect;
 import org.yelong.core.jdbc.dialect.Dialects;
@@ -25,10 +26,10 @@ import org.yelong.core.model.sql.DefaultSqlModelResolver;
 import org.yelong.core.model.sql.ModelSqlFragmentFactory;
 import org.yelong.core.model.sql.SqlModelResolver;
 import org.yelong.mybatis.spring.MyBatisBaseDataBaseOperation;
+import org.yelong.support.spring.ApplicationContextDecorator;
 
 /**
  * @author PengFei
- * @since
  */
 @Configuration
 public class YelongDefaultBeanAutoConfiguration {
@@ -105,6 +106,7 @@ public class YelongDefaultBeanAutoConfiguration {
 	 */
 	@Bean
 	@ConditionalOnMissingBean(MyBatisBaseDataBaseOperation.class)
+	@Transactional
 	public MyBatisBaseDataBaseOperation mybatisBaseDataBaseOperation(SqlSession sqlSession) {
 		return new MyBatisBaseDataBaseOperation(sqlSession);
 	}
@@ -116,6 +118,15 @@ public class YelongDefaultBeanAutoConfiguration {
 	@ConditionalOnMissingBean(ModelProperty.class)
 	public ModelProperty modelProperty() {
 		return DefaultModelProperty.INSTANCE;
+	}
+	
+	/**
+	 * @return application context 装饰器
+	 */
+	@Bean
+	@ConditionalOnMissingBean(ApplicationContextDecorator.class)
+	public ApplicationContextDecorator ApplicationContextDecorator() {
+		return new ApplicationContextDecorator();
 	}
 	
 }
