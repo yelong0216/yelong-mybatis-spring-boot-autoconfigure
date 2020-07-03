@@ -9,8 +9,9 @@ package org.yelong.mybatis.spring.boot.autoconfigure;
  */
 public final class YMSBA {
 
-	private YMSBA() {}
-	
-	public static String VERSION = "1.2.0";
-	
+	private YMSBA() {
+	}
+
+	public static String VERSION = "1.3.0";
+
 }

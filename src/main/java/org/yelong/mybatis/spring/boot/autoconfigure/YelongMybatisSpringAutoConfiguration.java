@@ -86,6 +86,13 @@ public class YelongMybatisSpringAutoConfiguration {
 		return modelConfigurationBuilder.build();
 	}
 
+	/**
+	 * 默认的 model service
+	 * 
+	 * @param modelConfiguration model configuration
+	 * @param myBatisBaseDataBaseOperation db
+	 * @return model service
+	 */
 	@Bean("sourceModelService")
 	@ConditionalOnMissingBean(SqlModelService.class)
 	public SqlModelService modelService(ModelConfiguration modelConfiguration,MyBatisBaseDataBaseOperation myBatisBaseDataBaseOperation) {
@@ -93,12 +100,12 @@ public class YelongMybatisSpringAutoConfiguration {
 	}
 
 	/**
-	 * yelong-labbol默认的ModelService
+	 * 添加拦截器代理后的ModelService
 	 * 
 	 * @param modelConfiguration model 配置
 	 * @param myBatisBaseDataBaseOperation 基础数据库操作
 	 * @param queryFilterInfoResolver 查询过滤解析器
-	 * @return model service
+	 * @return model service proxy
 	 */
 	@Bean("modelService")
 	@Primary

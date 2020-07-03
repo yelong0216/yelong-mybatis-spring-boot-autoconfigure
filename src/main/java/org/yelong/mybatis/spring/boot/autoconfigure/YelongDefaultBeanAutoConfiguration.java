@@ -10,7 +10,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import org.springframework.transaction.annotation.Transactional;
 import org.yelong.commons.lang.Strings;
 import org.yelong.core.jdbc.dialect.Dialect;
 import org.yelong.core.jdbc.dialect.Dialects;
@@ -29,13 +28,19 @@ import org.yelong.mybatis.spring.MyBatisBaseDataBaseOperation;
 import org.yelong.support.spring.ApplicationContextDecorator;
 
 /**
+ * 默认的配置
+ * 
  * @author PengFei
  */
 @Configuration
 public class YelongDefaultBeanAutoConfiguration {
 
+	/**
+	 * @param environment 环境
+	 * @return 方言
+	 */
 	@Bean
-	@ConditionalOnMissingBean
+	@ConditionalOnMissingBean(Dialect.class)
 	public Dialect dialect(Environment environment) {
 		String databaseUrl = environment.getProperty("spring.datasource.url");
 		Strings.requireNonBlank(databaseUrl, "不存在数据库配置");
@@ -48,12 +53,11 @@ public class YelongDefaultBeanAutoConfiguration {
 	}
 	
 	/**
-	 * @param modelProperties model 属性
 	 * @return 模型解析器
 	 */
 	@Bean
-	@ConditionalOnMissingBean
-	public AnnotationModelResolver annotationModelResolver() {
+	@ConditionalOnMissingBean(ModelResolver.class)
+	public ModelResolver annotationModelResolver() {
 		return new AnnotationModelResolver();
 	}
 	
@@ -61,7 +65,7 @@ public class YelongDefaultBeanAutoConfiguration {
 	 * @return 模型与表的管理器
 	 */
 	@Bean
-	@ConditionalOnMissingBean
+	@ConditionalOnMissingBean(ModelAndTableManager.class)
 	public ModelAndTableManager modelAndTableManager(List<ModelResolver> modelResolvers) {
 		return new ModelAndTableManager(modelResolvers.get(0));
 	}
@@ -72,9 +76,9 @@ public class YelongDefaultBeanAutoConfiguration {
 	 * @return 模型sql片段工厂
 	 */
 	@Bean
-	@ConditionalOnMissingBean
+	@ConditionalOnMissingBean(ModelSqlFragmentFactory.class)
 	public ModelSqlFragmentFactory modelSqlFragmentFactory(Dialect dialect,ModelAndTableManager modelAndTableManager) {
-		return new DefaultModelSqlFragmentFactory(dialect, modelAndTableManager);
+		return new DefaultModelSqlFragmentFactory(dialect.getSqlFragmentFactory(), modelAndTableManager);
 	}
 	
 	/**
@@ -82,7 +86,7 @@ public class YelongDefaultBeanAutoConfiguration {
 	 * @return 条件解析器
 	 */
 	@Bean
-	@ConditionalOnMissingBean
+	@ConditionalOnMissingBean(ConditionResolver.class)
 	public ConditionResolver conditionResolver(ModelSqlFragmentFactory modelSqlFragmentFactory) {
 		return new DefaultConditionResolver(modelSqlFragmentFactory);
 	}
@@ -93,7 +97,7 @@ public class YelongDefaultBeanAutoConfiguration {
 	 * @return sqlModel 解析器
 	 */
 	@Bean
-	@ConditionalOnMissingBean
+	@ConditionalOnMissingBean(SqlModelResolver.class)
 	public SqlModelResolver sqlModelResolver(ModelAndTableManager modelAndTableManager,ConditionResolver conditionResolver,ModelProperty modelProperty) {
 		DefaultSqlModelResolver sqlModelResolver = new DefaultSqlModelResolver(modelAndTableManager, conditionResolver);
 		sqlModelResolver.setModelProperty(modelProperty);
@@ -106,7 +110,6 @@ public class YelongDefaultBeanAutoConfiguration {
 	 */
 	@Bean
 	@ConditionalOnMissingBean(MyBatisBaseDataBaseOperation.class)
-	@Transactional
 	public MyBatisBaseDataBaseOperation mybatisBaseDataBaseOperation(SqlSession sqlSession) {
 		return new MyBatisBaseDataBaseOperation(sqlSession);
 	}
