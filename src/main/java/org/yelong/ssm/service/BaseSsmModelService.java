@@ -6,10 +6,10 @@ package org.yelong.ssm.service;
 import org.yelong.mybatis.spring.BaseService;
 
 /**
- * 为了兼容 yelong-ssm 
+ * 为了兼容 yelong-ssm
  * 
- * @author PengFei
+ * @since 1.0
  */
-public abstract class BaseSsmModelService extends BaseService{
-	
+public abstract class BaseSsmModelService extends BaseService {
+
 }

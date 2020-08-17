@@ -9,12 +9,13 @@ import org.springframework.boot.Banner;
 import org.springframework.core.env.Environment;
 
 /**
- * @author PengFei
  * @since 1.0.1
  */
 public final class YelongBanner implements Banner {
 
 	public static final Banner YELONG_BANNER = new YelongBanner();
+
+	public static final Banner INSTANCE = YELONG_BANNER;
 
 	private YelongBanner() {
 	}

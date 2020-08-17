@@ -11,15 +11,28 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.yelong.commons.lang.Strings;
+import org.yelong.core.jdbc.BaseDataBaseOperation;
 import org.yelong.core.jdbc.dialect.Dialect;
 import org.yelong.core.jdbc.dialect.Dialects;
 import org.yelong.core.jdbc.sql.condition.support.ConditionResolver;
 import org.yelong.core.jdbc.sql.condition.support.DefaultConditionResolver;
+import org.yelong.core.jdbc.sql.ddl.DataDefinitionLanguage;
+import org.yelong.core.jdbc.sql.function.DatabaseFunction;
+import org.yelong.core.model.manage.DefaultModelManager;
+import org.yelong.core.model.manage.ModelManager;
+import org.yelong.core.model.map.MapModelFieldAndColumnGetStrategy;
+import org.yelong.core.model.map.MapModelResolver;
+import org.yelong.core.model.map.annotation.AnnotationMapModelResolver;
+import org.yelong.core.model.map.support.DefaultMapModelFieldAndColumnGetStrategy;
+import org.yelong.core.model.pojo.POJOModelResolver;
+import org.yelong.core.model.pojo.annotation.AnnotationFieldResolver;
+import org.yelong.core.model.pojo.annotation.AnnotationPOJOModelResolver;
+import org.yelong.core.model.pojo.field.FieldResolver;
 import org.yelong.core.model.property.DefaultModelProperty;
 import org.yelong.core.model.property.ModelProperty;
-import org.yelong.core.model.resolve.AnnotationModelResolver;
-import org.yelong.core.model.resolve.ModelAndTableManager;
+import org.yelong.core.model.resolve.DefaultModelResolverManager;
 import org.yelong.core.model.resolve.ModelResolver;
+import org.yelong.core.model.resolve.ModelResolverManager;
 import org.yelong.core.model.sql.DefaultModelSqlFragmentFactory;
 import org.yelong.core.model.sql.DefaultSqlModelResolver;
 import org.yelong.core.model.sql.ModelSqlFragmentFactory;
@@ -29,16 +42,10 @@ import org.yelong.support.spring.ApplicationContextDecorator;
 
 /**
  * 默认的配置
- * 
- * @author PengFei
  */
 @Configuration
 public class YelongDefaultBeanAutoConfiguration {
-
-	/**
-	 * @param environment 环境
-	 * @return 方言
-	 */
+	
 	@Bean
 	@ConditionalOnMissingBean(Dialect.class)
 	public Dialect dialect(Environment environment) {
@@ -51,85 +58,96 @@ public class YelongDefaultBeanAutoConfiguration {
 		}
 		throw new NullPointerException("无效的数据库方言");
 	}
-	
-	/**
-	 * @return 模型解析器
-	 */
-	@Bean
-	@ConditionalOnMissingBean(ModelResolver.class)
-	public ModelResolver annotationModelResolver() {
-		return new AnnotationModelResolver();
-	}
-	
-	/**
-	 * @return 模型与表的管理器
-	 */
-	@Bean
-	@ConditionalOnMissingBean(ModelAndTableManager.class)
-	public ModelAndTableManager modelAndTableManager(List<ModelResolver> modelResolvers) {
-		return new ModelAndTableManager(modelResolvers.get(0));
-	}
-	
-	/**
-	 * @param dialect 方言
-	 * @param modelAndTableManager 模型与表管理者
-	 * @return 模型sql片段工厂
-	 */
-	@Bean
-	@ConditionalOnMissingBean(ModelSqlFragmentFactory.class)
-	public ModelSqlFragmentFactory modelSqlFragmentFactory(Dialect dialect,ModelAndTableManager modelAndTableManager) {
-		return new DefaultModelSqlFragmentFactory(dialect.getSqlFragmentFactory(), modelAndTableManager);
-	}
-	
-	/**
-	 * @param modelSqlFragmentFactory 模型sql片段工厂
-	 * @return 条件解析器
-	 */
-	@Bean
-	@ConditionalOnMissingBean(ConditionResolver.class)
-	public ConditionResolver conditionResolver(ModelSqlFragmentFactory modelSqlFragmentFactory) {
-		return new DefaultConditionResolver(modelSqlFragmentFactory);
-	}
-	
-	/**
-	 * @param modelAndTableManager 模型与表管理者
-	 * @param conditionResolver 条件解析器
-	 * @return sqlModel 解析器
-	 */
-	@Bean
-	@ConditionalOnMissingBean(SqlModelResolver.class)
-	public SqlModelResolver sqlModelResolver(ModelAndTableManager modelAndTableManager,ConditionResolver conditionResolver,ModelProperty modelProperty) {
-		DefaultSqlModelResolver sqlModelResolver = new DefaultSqlModelResolver(modelAndTableManager, conditionResolver);
-		sqlModelResolver.setModelProperty(modelProperty);
-		return sqlModelResolver;
-	}
-	
-	/**
-	 * @param sqlSession sql  session
-	 * @return 数据库操作
-	 */
+
 	@Bean
 	@ConditionalOnMissingBean(MyBatisBaseDataBaseOperation.class)
 	public MyBatisBaseDataBaseOperation mybatisBaseDataBaseOperation(SqlSession sqlSession) {
 		return new MyBatisBaseDataBaseOperation(sqlSession);
 	}
-	
-	/**
-	 * @return model 属性管理
-	 */
+
+	@Bean
+	@ConditionalOnMissingBean(DataDefinitionLanguage.class)
+	public DataDefinitionLanguage dataDefinitionLanguage(Dialect dialect, BaseDataBaseOperation baseDataBaseOperation) {
+		return dialect.createDataDefinitionLanguage(baseDataBaseOperation);
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(DatabaseFunction.class)
+	public DatabaseFunction databaseFunction(Dialect dialect, BaseDataBaseOperation baseDataBaseOperation) {
+		return dialect.createDatabaseFunction(baseDataBaseOperation);
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(MapModelFieldAndColumnGetStrategy.class)
+	public MapModelFieldAndColumnGetStrategy mapModelFieldAndColumnGetStrategy(
+			DataDefinitionLanguage dataDefinitionLanguage, DatabaseFunction dataBaseFunction) {
+		return new DefaultMapModelFieldAndColumnGetStrategy(dataDefinitionLanguage, dataBaseFunction);
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(MapModelResolver.class)
+	public MapModelResolver mapModelResolver(MapModelFieldAndColumnGetStrategy mapModelFieldAndColumnGetStrategy) {
+		return new AnnotationMapModelResolver(mapModelFieldAndColumnGetStrategy);
+	}
+
+	@Bean
+	public FieldResolver defaultFieldResolver() {
+		return new AnnotationFieldResolver();
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(value = ModelResolver.class, ignored = MapModelResolver.class)
+	public ModelResolver modelResolver(List<FieldResolver> fieldResolvers) {
+		POJOModelResolver configurableFieldResolverModelResolver = new AnnotationPOJOModelResolver();
+		fieldResolvers.forEach(configurableFieldResolverModelResolver::registerFieldResovler);
+		return configurableFieldResolverModelResolver;
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(ModelResolverManager.class)
+	public ModelResolverManager modelResolverManager(List<ModelResolver> modelResolvers) {
+		DefaultModelResolverManager modelResolverManager = new DefaultModelResolverManager();
+		modelResolvers.forEach(modelResolverManager::registerModelResolver);
+		return modelResolverManager;
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(ModelManager.class)
+	public ModelManager modelManager(ModelResolverManager modelResolverManager) {
+		return new DefaultModelManager(modelResolverManager);
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(ModelSqlFragmentFactory.class)
+	public ModelSqlFragmentFactory modelSqlFragmentFactory(Dialect dialect, ModelManager modelManager) {
+		return new DefaultModelSqlFragmentFactory(dialect.getSqlFragmentFactory(), modelManager);
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(ConditionResolver.class)
+	public ConditionResolver conditionResolver(ModelSqlFragmentFactory modelSqlFragmentFactory) {
+		return new DefaultConditionResolver(modelSqlFragmentFactory);
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(SqlModelResolver.class)
+	public SqlModelResolver sqlModelResolver(ModelManager modelManager, ConditionResolver conditionResolver,
+			ModelProperty modelProperty) {
+		DefaultSqlModelResolver sqlModelResolver = new DefaultSqlModelResolver(modelManager, conditionResolver);
+		sqlModelResolver.setModelProperty(modelProperty);
+		return sqlModelResolver;
+	}
+
 	@Bean
 	@ConditionalOnMissingBean(ModelProperty.class)
 	public ModelProperty modelProperty() {
 		return DefaultModelProperty.INSTANCE;
 	}
-	
-	/**
-	 * @return application context 装饰器
-	 */
+
 	@Bean
 	@ConditionalOnMissingBean(ApplicationContextDecorator.class)
 	public ApplicationContextDecorator ApplicationContextDecorator() {
 		return new ApplicationContextDecorator();
 	}
-	
+
 }

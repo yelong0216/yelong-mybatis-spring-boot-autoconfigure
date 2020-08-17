@@ -15,6 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +27,9 @@ import org.yelong.core.jdbc.dialect.Dialect;
 import org.yelong.core.jdbc.sql.condition.support.ConditionResolver;
 import org.yelong.core.model.ModelConfiguration;
 import org.yelong.core.model.ModelConfigurationBuilder;
+import org.yelong.core.model.ModelProperties;
+import org.yelong.core.model.manage.ModelManager;
 import org.yelong.core.model.property.ModelProperty;
-import org.yelong.core.model.resolve.ModelAndTableManager;
 import org.yelong.core.model.service.ModelService;
 import org.yelong.core.model.service.SqlModelService;
 import org.yelong.core.model.sql.ModelSqlFragmentFactory;
@@ -36,19 +38,23 @@ import org.yelong.mybatis.spring.MyBatisBaseDataBaseOperation;
 import org.yelong.mybatis.spring.MyBatisModelService;
 
 /**
- * @author PengFei
+ * @since 2.0
  */
 @org.springframework.context.annotation.Configuration
-@ConditionalOnClass({ MybatisAutoConfiguration.class,ModelConfiguration.class,ModelService.class,BaseDataBaseOperation.class })
+@ConditionalOnClass({ MybatisAutoConfiguration.class, ModelConfiguration.class, ModelService.class,
+		BaseDataBaseOperation.class })
 @ConditionalOnSingleCandidate(SqlSession.class)
-@AutoConfigureAfter({ MybatisAutoConfiguration.class,YelongDefaultBeanAutoConfiguration.class })
-public class YelongMybatisSpringAutoConfiguration {
+@EnableConfigurationProperties(YelongModelProperties.class)
+@AutoConfigureAfter({ MybatisAutoConfiguration.class })
+public class YelongAutoConfiguration {
 
 	private Dialect dialect;
 
-	private ModelProperty modelProperty;
+	private ModelProperties modelProperties;
 
-	private ModelAndTableManager modelAndTableManager;
+	private ModelManager modelManager;
+
+	private ModelProperty modelProperty;
 
 	private ModelSqlFragmentFactory modelSqlFragmentFactory;
 
@@ -56,17 +62,16 @@ public class YelongMybatisSpringAutoConfiguration {
 
 	private SqlModelResolver sqlModelResolver;
 
-	public static final String PROPERTIES_PREFIX = "yelong";
-
-	public YelongMybatisSpringAutoConfiguration(ObjectProvider<Dialect> dialectProvider,
-			ObjectProvider<ModelAndTableManager> modelAndTableManagerProvider,
+	public YelongAutoConfiguration(ObjectProvider<Dialect> dialectProvider,
+			ObjectProvider<ModelProperties> modelPropertiesProvider, ObjectProvider<ModelManager> modelManagerProvider,
 			ObjectProvider<ModelSqlFragmentFactory> modelSqlFragmentFactoryProvider,
 			ObjectProvider<ConditionResolver> conditionResolverProvider,
 			ObjectProvider<SqlModelResolver> sqlModelResolverProvider,
 			ObjectProvider<ModelProperty> modelPropertyProvider) {
 		this.dialect = dialectProvider.getIfAvailable();
+		this.modelProperties = modelPropertiesProvider.getIfAvailable();
 		this.modelProperty = modelPropertyProvider.getIfAvailable();
-		this.modelAndTableManager = modelAndTableManagerProvider.getIfAvailable();
+		this.modelManager = modelManagerProvider.getIfAvailable();
 		this.modelSqlFragmentFactory = modelSqlFragmentFactoryProvider.getIfAvailable();
 		this.conditionResolver = conditionResolverProvider.getIfAvailable();
 		this.sqlModelResolver = sqlModelResolverProvider.getIfAvailable();
@@ -75,58 +80,41 @@ public class YelongMybatisSpringAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(ModelConfiguration.class)
 	public ModelConfiguration modelConfiguration() {
-		Assert.notNull(dialect,"未发现或识别失败的数据库方言");
-		ModelConfigurationBuilder modelConfigurationBuilder = new ModelConfigurationBuilder();
-		modelConfigurationBuilder.setDialect(dialect);
+		Assert.notNull(dialect, "未发现或识别失败的数据库方言");
+		ModelConfigurationBuilder modelConfigurationBuilder = ModelConfigurationBuilder.create(dialect);
+		modelConfigurationBuilder.setModelProperties(modelProperties);
 		modelConfigurationBuilder.setConditionResolver(conditionResolver);
-		modelConfigurationBuilder.setModelAndTableManager(modelAndTableManager);
+		modelConfigurationBuilder.setModelManager(modelManager);
 		modelConfigurationBuilder.setModelSqlFragmentFactory(modelSqlFragmentFactory);
 		modelConfigurationBuilder.setSqlModelResolver(sqlModelResolver);
 		modelConfigurationBuilder.setModelProperty(modelProperty);
 		return modelConfigurationBuilder.build();
 	}
 
-	/**
-	 * 默认的 model service
-	 * 
-	 * @param modelConfiguration model configuration
-	 * @param myBatisBaseDataBaseOperation db
-	 * @return model service
-	 */
 	@Bean("sourceModelService")
 	@ConditionalOnMissingBean(SqlModelService.class)
-	public SqlModelService modelService(ModelConfiguration modelConfiguration,MyBatisBaseDataBaseOperation myBatisBaseDataBaseOperation) {
-		return new MyBatisModelService(modelConfiguration,myBatisBaseDataBaseOperation);
+	public SqlModelService modelService(ModelConfiguration modelConfiguration,
+			MyBatisBaseDataBaseOperation myBatisBaseDataBaseOperation) {
+		return new MyBatisModelService(modelConfiguration, myBatisBaseDataBaseOperation);
 	}
 
-	/**
-	 * 添加拦截器代理后的ModelService
-	 * 
-	 * @param modelConfiguration model 配置
-	 * @param myBatisBaseDataBaseOperation 基础数据库操作
-	 * @param queryFilterInfoResolver 查询过滤解析器
-	 * @return model service proxy
-	 */
 	@Bean("modelService")
 	@Primary
 	@Transactional
 	@ConditionalOnBean(Interceptor.class)
 	@ConditionalOnSingleCandidate(ModelService.class)
 	@SuppressWarnings("unchecked")
-	@ConditionalOnProperty(
-			prefix = PROPERTIES_PREFIX,
-			name = "modelServiceProxy",
-			havingValue = "true",
-			matchIfMissing = false)
-	public <T extends ModelService> T modelServiceProxy(T modelService,ObjectProvider<List<Interceptor>> interceptorProvider) {
+	@ConditionalOnProperty(prefix = YelongModelProperties.PROPERTIES_PREFIX, name = "modelServiceProxy", havingValue = "true", matchIfMissing = false)
+	public <T extends ModelService> T modelServiceProxy(T modelService,
+			ObjectProvider<List<Interceptor>> interceptorProvider) {
 		List<Interceptor> interceptors = interceptorProvider.getIfAvailable();
-		InterceptorChain interceptorChain =  new InterceptorChain();
+		InterceptorChain interceptorChain = new InterceptorChain();
 		interceptorChain.addInterceptor(interceptors);
 		Class<?> targetClass = AopUtils.getTargetClass(modelService);
-		if( null == targetClass ) {
+		if (null == targetClass) {
 			return (T) interceptorChain.pluginAll(modelService);
 		} else {
-			return (T) interceptorChain.pluginAll(modelService,targetClass.getInterfaces());
+			return (T) interceptorChain.pluginAll(modelService, targetClass.getInterfaces());
 		}
 	}
 
