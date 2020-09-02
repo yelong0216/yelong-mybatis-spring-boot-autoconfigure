@@ -45,7 +45,7 @@ import org.yelong.support.spring.ApplicationContextDecorator;
  */
 @Configuration
 public class YelongDefaultBeanAutoConfiguration {
-	
+
 	@Bean
 	@ConditionalOnMissingBean(Dialect.class)
 	public Dialect dialect(Environment environment) {
@@ -133,8 +133,8 @@ public class YelongDefaultBeanAutoConfiguration {
 	@ConditionalOnMissingBean(SqlModelResolver.class)
 	public SqlModelResolver sqlModelResolver(ModelManager modelManager, ConditionResolver conditionResolver,
 			ModelProperty modelProperty) {
-		DefaultSqlModelResolver sqlModelResolver = new DefaultSqlModelResolver(modelManager, conditionResolver);
-		sqlModelResolver.setModelProperty(modelProperty);
+		DefaultSqlModelResolver sqlModelResolver = new DefaultSqlModelResolver(modelManager, conditionResolver,
+				conditionResolver.getSqlFragmentFactory(), modelProperty);
 		return sqlModelResolver;
 	}
 
