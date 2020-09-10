@@ -3,33 +3,16 @@
  */
 package org.yelong.mybatis.spring.boot.autoconfigure;
 
-import java.io.PrintStream;
-
 import org.springframework.boot.Banner;
-import org.springframework.core.env.Environment;
 
 /**
  * @since 1.0.1
+ * @see org.yelong.spring.boot.YelongBanner
  */
-public final class YelongBanner implements Banner {
+public final class YelongBanner extends org.yelong.spring.boot.YelongBanner {
 
-	public static final Banner YELONG_BANNER = new YelongBanner();
+	public static final Banner YELONG_BANNER = org.yelong.spring.boot.YelongBanner.INSTANCE;
 
 	public static final Banner INSTANCE = YELONG_BANNER;
-
-	private YelongBanner() {
-	}
-
-	public static final String PRINT = "_____.___.      .____                          \r\n"
-			+ "\\__  |   | ____ |    |    ____   ____    ____  \r\n"
-			+ " /   |   |/ __ \\|    |   /  _ \\ /    \\  / ___\\ \r\n"
-			+ " \\____   \\  ___/|    |__(  <_> )   |  \\/ /_/  >\r\n"
-			+ " / ______|\\___  >_______ \\____/|___|  /\\___  / \r\n"
-			+ " \\/           \\/        \\/          \\//_____/  \r\n";
-
-	@Override
-	public void printBanner(Environment environment, Class<?> sourceClass, PrintStream out) {
-		out.print(PRINT);
-	}
 
 }
