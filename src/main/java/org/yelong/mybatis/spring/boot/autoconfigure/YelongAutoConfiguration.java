@@ -31,6 +31,7 @@ import org.yelong.core.model.ModelProperties;
 import org.yelong.core.model.manage.ModelManager;
 import org.yelong.core.model.property.ModelProperty;
 import org.yelong.core.model.service.ModelService;
+import org.yelong.core.model.service.ModelServiceInterceptor;
 import org.yelong.core.model.service.SqlModelService;
 import org.yelong.core.model.sql.ModelSqlFragmentFactory;
 import org.yelong.core.model.sql.SqlModelResolver;
@@ -106,8 +107,8 @@ public class YelongAutoConfiguration {
 	@SuppressWarnings("unchecked")
 	@ConditionalOnProperty(prefix = YelongModelProperties.PROPERTIES_PREFIX, name = "modelServiceProxy", havingValue = "true", matchIfMissing = false)
 	public <T extends ModelService> T modelServiceProxy(T modelService,
-			ObjectProvider<List<Interceptor>> interceptorProvider) {
-		List<Interceptor> interceptors = interceptorProvider.getIfAvailable();
+			ObjectProvider<List<ModelServiceInterceptor>> moduleServiceInterceptorsProvider) {
+		List<ModelServiceInterceptor> interceptors = moduleServiceInterceptorsProvider.getIfAvailable();
 		InterceptorChain interceptorChain = new InterceptorChain();
 		interceptorChain.addInterceptor(interceptors);
 		Class<?> targetClass = AopUtils.getTargetClass(modelService);
