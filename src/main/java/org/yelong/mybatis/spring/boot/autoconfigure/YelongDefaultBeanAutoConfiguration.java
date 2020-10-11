@@ -14,10 +14,13 @@ import org.yelong.commons.lang.Strings;
 import org.yelong.core.jdbc.BaseDataBaseOperation;
 import org.yelong.core.jdbc.dialect.Dialect;
 import org.yelong.core.jdbc.dialect.Dialects;
+import org.yelong.core.jdbc.record.DefaultRecordOperation;
+import org.yelong.core.jdbc.record.RecordOperation;
 import org.yelong.core.jdbc.sql.condition.support.ConditionResolver;
 import org.yelong.core.jdbc.sql.condition.support.DefaultConditionResolver;
 import org.yelong.core.jdbc.sql.ddl.DataDefinitionLanguage;
 import org.yelong.core.jdbc.sql.function.DatabaseFunction;
+import org.yelong.core.model.collector.ModelServiceCollectInterceptor;
 import org.yelong.core.model.manage.DefaultModelManager;
 import org.yelong.core.model.manage.ModelManager;
 import org.yelong.core.model.map.MapModelFieldAndColumnGetStrategy;
@@ -33,6 +36,8 @@ import org.yelong.core.model.property.ModelProperty;
 import org.yelong.core.model.resolve.DefaultModelResolverManager;
 import org.yelong.core.model.resolve.ModelResolver;
 import org.yelong.core.model.resolve.ModelResolverManager;
+import org.yelong.core.model.service.SqlModelService;
+import org.yelong.core.model.service.function.MSFunctionInterceptor;
 import org.yelong.core.model.sql.DefaultModelSqlFragmentFactory;
 import org.yelong.core.model.sql.DefaultSqlModelResolver;
 import org.yelong.core.model.sql.ModelSqlFragmentFactory;
@@ -46,6 +51,8 @@ import org.yelong.support.spring.ApplicationContextDecorator;
 @Configuration
 public class YelongDefaultBeanAutoConfiguration {
 
+	// ==================================================数据库方言==================================================
+
 	@Bean
 	@ConditionalOnMissingBean(Dialect.class)
 	public Dialect dialect(Environment environment) {
@@ -58,6 +65,8 @@ public class YelongDefaultBeanAutoConfiguration {
 		}
 		throw new NullPointerException("无效的数据库方言");
 	}
+
+	// ==================================================数据库操作==================================================
 
 	@Bean
 	@ConditionalOnMissingBean(MyBatisBaseDataBaseOperation.class)
@@ -76,6 +85,14 @@ public class YelongDefaultBeanAutoConfiguration {
 	public DatabaseFunction databaseFunction(Dialect dialect, BaseDataBaseOperation baseDataBaseOperation) {
 		return dialect.createDatabaseFunction(baseDataBaseOperation);
 	}
+
+	@Bean
+	@ConditionalOnMissingBean(RecordOperation.class)
+	public RecordOperation recordOperation(BaseDataBaseOperation baseDataBaseOperation,Dialect dialect) {
+		return new DefaultRecordOperation(baseDataBaseOperation, dialect);
+	}
+	
+	// ==================================================模型管理==================================================
 
 	@Bean
 	@ConditionalOnMissingBean(MapModelFieldAndColumnGetStrategy.class)
@@ -144,6 +161,43 @@ public class YelongDefaultBeanAutoConfiguration {
 		return DefaultModelProperty.INSTANCE;
 	}
 
+	// ==================================================ModelServiceInterceptor==================================================
+
+	/**
+	 * @return 模型服务收集器拦截器
+	 * @since 2.1.4
+	 */
+	@Bean
+	@ConditionalOnMissingBean(ModelServiceCollectInterceptor.class)
+	public ModelServiceCollectInterceptor modelServiceCollectInterceptor() {
+		return new ModelServiceCollectInterceptor() {
+			@Override
+			protected SqlModelService getInterceptorWrapAfterSqlModelService() {
+				return ApplicationContextDecorator.getBean(SqlModelService.class);
+			}
+		};
+	}
+
+	/**
+	 * @return 模型服务函数拦截器
+	 * @since 2.1.4
+	 */
+	@Bean
+	@ConditionalOnMissingBean(MSFunctionInterceptor.class)
+	public MSFunctionInterceptor msFunctionInterceptor() {
+		return new MSFunctionInterceptor() {
+			@Override
+			protected SqlModelService getInterceptorWrapAfterSqlModelService() {
+				return ApplicationContextDecorator.getBean(SqlModelService.class);
+			}
+		};
+	}
+
+	// ==================================================SpringApplicationContext==================================================
+
+	/**
+	 * @return ApplicationContext装饰器
+	 */
 	@Bean
 	@ConditionalOnMissingBean(ApplicationContextDecorator.class)
 	public ApplicationContextDecorator ApplicationContextDecorator() {
