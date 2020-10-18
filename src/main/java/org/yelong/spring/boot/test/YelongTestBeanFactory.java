@@ -3,7 +3,6 @@
  */
 package org.yelong.spring.boot.test;
 
-import java.io.FileNotFoundException;
 import java.util.Arrays;
 
 import org.yelong.commons.util.ResourcesUtils;
@@ -40,12 +39,8 @@ public class YelongTestBeanFactory {
 	}
 
 	public YelongTestBeanFactory(String properties) {
-		try {
-			applicationYml = yamlWrapper.load(ResourcesUtils.getResourceAsStream(properties));
-			springDataSource = new SpringDataSource(applicationYml);
-		} catch (FileNotFoundException e) {
-			throw new RuntimeException(e);
-		}
+		applicationYml = yamlWrapper.load(ResourcesUtils.getResourceAsStream(properties));
+		springDataSource = new SpringDataSource(applicationYml);
 	}
 
 	public BaseDataBaseOperation buildBaseDataBaseOperation() {
